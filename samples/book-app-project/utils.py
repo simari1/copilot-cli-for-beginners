@@ -8,7 +8,22 @@ def print_menu():
 
 
 def get_user_choice() -> str:
-    return input("Choose an option (1-5): ").strip()
+    while True:
+        choice = input("Choose an option (1-5): ").strip()
+        
+        if not choice:
+            print("Please enter a choice.")
+            continue
+        
+        if not choice.isdigit():
+            print("Please enter a number.")
+            continue
+        
+        if choice not in ["1", "2", "3", "4", "5"]:
+            print("Please enter a number between 1 and 5.")
+            continue
+        
+        return choice
 
 
 def get_book_details():

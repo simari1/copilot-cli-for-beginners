@@ -70,3 +70,27 @@ class BookCollection:
     def find_by_author(self, author: str) -> List[Book]:
         """Find all books by a given author."""
         return [b for b in self.books if b.author.lower() == author.lower()]
+
+    def get_statistics(self) -> dict:
+        """本の統計情報を取得します。"""
+        if not self.books:
+            return {
+                "total_count": 0,
+                "read_count": 0,
+                "unread_count": 0,
+                "oldest_book": None,
+                "newest_book": None
+            }
+        
+        read_count = sum(1 for book in self.books if book.read)
+        unread_count = len(self.books) - read_count
+        oldest_book = min(self.books, key=lambda b: b.year)
+        newest_book = max(self.books, key=lambda b: b.year)
+        
+        return {
+            "total_count": len(self.books),
+            "read_count": read_count,
+            "unread_count": unread_count,
+            "oldest_book": oldest_book,
+            "newest_book": newest_book
+        }
