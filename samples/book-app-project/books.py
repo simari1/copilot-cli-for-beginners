@@ -1,4 +1,5 @@
 import json
+import unicodedata
 from dataclasses import dataclass, asdict
 from typing import List, Optional
 
@@ -17,6 +18,12 @@ class BookCollection:
     def __init__(self):
         self.books: List[Book] = []
         self.load_books()
+
+    def _normalize(self, s: str) -> str:
+        """Normalize, strip and lowercase strings for reliable comparisons."""
+        if not isinstance(s, str):
+            return ""
+        return unicodedata.normalize("NFC", s).strip().lower()
 
     def load_books(self):
         """Load books from the JSON file if it exists."""
@@ -45,10 +52,28 @@ class BookCollection:
         return self.books
 
     def find_book_by_title(self, title: str) -> Optional[Book]:
+        """Return the first exact (normalized) match for title, or None."""
+        if not isinstance(title, str):
+            return None
+        norm = self._normalize(title)
         for book in self.books:
-            if book.title.lower() == title.lower():
+            if self._normalize(book.title) == norm:
                 return book
         return None
+
+    def find_books_by_title(self, title: str) -> List[Book]:
+        """Return all exact (normalized) matches for title."""
+        if not isinstance(title, str):
+            return []
+        norm = self._normalize(title)
+        return [b for b in self.books if self._normalize(b.title) == norm]
+
+    def find_similar_titles(self, title: str) -> List[Book]:
+        """Return books where the normalized title contains the query or vice-versa (simple similarity)."""
+        if not isinstance(title, str):
+            return []
+        norm = self._normalize(title)
+        return [b for b in self.books if norm in self._normalize(b.title) or self._normalize(b.title) in norm]
 
     def mark_as_read(self, title: str) -> bool:
         book = self.find_book_by_title(title)
@@ -58,14 +83,90 @@ class BookCollection:
             return True
         return False
 
-    def remove_book(self, title: str) -> bool:
-        """Remove a book by title."""
-        book = self.find_book_by_title(title)
-        if book:
-            self.books.remove(book)
-            self.save_books()
-            return True
-        return False
+    def remove_book(self, title: str, index: Optional[int] = None) -> dict:
+        """Remove a book by title or by index when multiple matches exist.
+
+        Parameters:
+        - title: the title to search for (string)
+        - index: optional 1-based index into the matches/similar lists to disambiguate
+
+        Returns a dict with keys:
+        - success: bool
+        - removed: int (number removed)
+        - message: str
+        - matches / similar: optional lists of titles when ambiguous or no exact match
+        """
+        # Basic validation
+        if not isinstance(title, str) or not title.strip():
+            return {"success": False, "removed": 0, "message": "Invalid title provided."}
+
+        # Find exact matches first
+        exact_matches = self.find_books_by_title(title)
+
+        # If exact matches exist
+        if exact_matches:
+            # If an index was provided, attempt to remove that specific match
+            if index is not None:
+                if not isinstance(index, int) or index < 1 or index > len(exact_matches):
+                    return {
+                        "success": False,
+                        "removed": 0,
+                        "message": "Index out of range for exact matches.",
+                        "matches": [b.title for b in exact_matches]
+                    }
+                book = exact_matches[index - 1]
+                try:
+                    self.books.remove(book)
+                    self.save_books()
+                    return {"success": True, "removed": 1, "message": f"Removed book: {book.title}"}
+                except ValueError:
+                    return {"success": False, "removed": 0, "message": "Failed to remove book (internal error)."}
+
+            # No index: ambiguous if multiple
+            if len(exact_matches) > 1:
+                return {
+                    "success": False,
+                    "removed": 0,
+                    "message": "Multiple books match that title. Provide an index to disambiguate.",
+                    "matches": [b.title for b in exact_matches]
+                }
+
+            # Single exact match -> remove
+            book = exact_matches[0]
+            try:
+                self.books.remove(book)
+                self.save_books()
+                return {"success": True, "removed": 1, "message": f"Removed book: {book.title}"}
+            except ValueError:
+                return {"success": False, "removed": 0, "message": "Failed to remove book (internal error)."}
+
+        # No exact matches: look for similar titles
+        similar = self.find_similar_titles(title)
+        if similar:
+            if index is not None:
+                if not isinstance(index, int) or index < 1 or index > len(similar):
+                    return {
+                        "success": False,
+                        "removed": 0,
+                        "message": "Index out of range for similar titles.",
+                        "similar": [b.title for b in similar]
+                    }
+                book = similar[index - 1]
+                try:
+                    self.books.remove(book)
+                    self.save_books()
+                    return {"success": True, "removed": 1, "message": f"Removed book: {book.title} (from similar matches)"}
+                except ValueError:
+                    return {"success": False, "removed": 0, "message": "Failed to remove book (internal error)."}
+
+            return {
+                "success": False,
+                "removed": 0,
+                "message": "No exact match found. Similar titles exist.",
+                "similar": [b.title for b in similar]
+            }
+
+        return {"success": False, "removed": 0, "message": "No book found with that title."}
 
     def find_by_author(self, author: str) -> List[Book]:
         """Find all books by a given author."""
