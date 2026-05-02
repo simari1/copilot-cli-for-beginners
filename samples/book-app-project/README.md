@@ -37,9 +37,19 @@ python book_app.py help
 
 ## Running Tests
 
+Run tests:
+
 ```bash
 python -m pytest tests/
 ```
+
+Generate HTML coverage report (output folder: reports/coverage-html):
+
+```bash
+python -m pytest --cov=. --cov-report=html:reports/coverage-html tests/
+```
+
+The generated report index is at: reports/coverage-html/index.html
 
 ---
 
