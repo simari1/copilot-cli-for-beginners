@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "GitHub Copilot CLI for Beginners - Course Materials",
   "scripts": {
+    "test": "cd samples/book-app-project && python -c \"import os; os.makedirs('reports', exist_ok=True)\" && python -m pip install --quiet pytest-html && python -m pytest -q --html=reports/pytest-report.html --self-contained-html",
     "generate:headers": "python3 .github/scripts/generate-chapter-headers.py",
     "scan:demos": "node .github/scripts/scan-demos.js",
     "create:tapes": "node .github/scripts/create-tapes.js",
