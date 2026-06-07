@@ -195,3 +195,19 @@ class BookCollection:
             "oldest_book": oldest_book,
             "newest_book": newest_book
         }
+
+    def find_by_year_range(self, start_year: int, end_year: int) -> List[Book]:
+        """Find books published between start_year and end_year (inclusive).
+
+        Validates inputs and accepts start_year > end_year by swapping values.
+        Raises ValueError if either argument is not an int.
+        Returns a list of Book instances matching the range.
+        """
+        if not isinstance(start_year, int) or not isinstance(end_year, int):
+            raise ValueError("start_year and end_year must be integers")
+
+        # Allow reversed ranges by swapping
+        if start_year > end_year:
+            start_year, end_year = end_year, start_year
+
+        return [b for b in self.books if start_year <= b.year <= end_year]

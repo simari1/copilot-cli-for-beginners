@@ -124,3 +124,57 @@ def test_remove_book_index_out_of_range_for_similar():
     assert res["removed"] == 0
     assert "Index out of range for similar titles" in res["message"]
     assert isinstance(res.get("similar"), list)
+
+
+def test_find_by_year_range_inclusive_boundaries():
+    collection = BookCollection()
+    collection.add_book("Book A", "Author A", 1990)
+    collection.add_book("Book B", "Author B", 1995)
+    collection.add_book("Book C", "Author C", 2000)
+
+    res = collection.find_by_year_range(1990, 2000)
+    assert isinstance(res, list)
+    assert len(res) == 3
+    years = sorted(b.year for b in res)
+    assert years == [1990, 1995, 2000]
+
+
+def test_find_by_year_range_single_year():
+    collection = BookCollection()
+    collection.add_book("Only One", "Solo Author", 2020)
+
+    res = collection.find_by_year_range(2020, 2020)
+    assert len(res) == 1
+    assert res[0].year == 2020
+
+
+def test_find_by_year_range_reversed():
+    collection = BookCollection()
+    collection.add_book("Old", "Author X", 1980)
+    collection.add_book("New", "Author Y", 1990)
+
+    res_forward = collection.find_by_year_range(1980, 1990)
+    res_reversed = collection.find_by_year_range(1990, 1980)
+    assert sorted([b.title for b in res_forward]) == sorted([b.title for b in res_reversed])
+
+
+def test_find_by_year_range_no_matches():
+    collection = BookCollection()
+    collection.add_book("Later Book", "Author Z", 2001)
+
+    res = collection.find_by_year_range(1990, 2000)
+    assert res == []
+
+
+def test_find_by_year_range_empty_collection():
+    collection = BookCollection()
+    res = collection.find_by_year_range(1900, 1950)
+    assert res == []
+
+
+def test_find_by_year_range_invalid_inputs():
+    collection = BookCollection()
+    with pytest.raises(ValueError):
+        collection.find_by_year_range("1990", "2000")
+    with pytest.raises(ValueError):
+        collection.find_by_year_range(None, 2000)  # type: ignore
