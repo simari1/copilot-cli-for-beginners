@@ -10,7 +10,7 @@ It can add, remove, and list books. Also mark them as read.
 ## Current Features
 
 * Reads books from a JSON file (our database)
-* Input checking is weak in some areas
+* Input checking validates title, author, and year
 * Some tests exist but probably not enough
 
 ---
@@ -58,3 +58,10 @@ The generated report index is at: reports/coverage-html/index.html
 * Not production-ready (obviously)
 * Some code could be improved
 * Could add more commands later
+
+## Recent behavior changes
+
+* `add_book` now validates inputs strictly:
+  * `title` and `author` must be non-empty strings
+  * `year` must be an integer (booleans are rejected)
+* Invalid records in `data.json` are treated as corrupted input and the app starts with an empty collection.

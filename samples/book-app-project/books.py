@@ -1,9 +1,12 @@
 import json
+import logging
 import unicodedata
 from dataclasses import dataclass, asdict
+from pathlib import Path
 from typing import List, Optional
 
-DATA_FILE = "data.json"
+DATA_FILE = Path(__file__).parent / "data.json"
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -12,6 +15,14 @@ class Book:
     author: str
     year: int
     read: bool = False
+
+    def __post_init__(self):
+        if not isinstance(self.title, str) or not self.title.strip():
+            raise ValueError("Title must be a non-empty string.")
+        if not isinstance(self.author, str) or not self.author.strip():
+            raise ValueError("Author must be a non-empty string.")
+        if isinstance(self.year, bool) or not isinstance(self.year, int):
+            raise ValueError("Year must be an integer.")
 
 
 class BookCollection:
@@ -34,13 +45,20 @@ class BookCollection:
         except FileNotFoundError:
             self.books = []
         except json.JSONDecodeError:
-            print("Warning: data.json is corrupted. Starting with empty collection.")
+            logger.warning("data.json is corrupted. Starting with empty collection.")
+            self.books = []
+        except (TypeError, KeyError, ValueError) as e:
+            logger.warning("data.json has unexpected structure (%s). Starting with empty collection.", e)
             self.books = []
 
     def save_books(self):
         """Save the current book collection to JSON."""
-        with open(DATA_FILE, "w") as f:
-            json.dump([asdict(b) for b in self.books], f, indent=2)
+        try:
+            with open(DATA_FILE, "w") as f:
+                json.dump([asdict(b) for b in self.books], f, indent=2)
+        except OSError as e:
+            logger.error("Failed to save books: %s", e)
+            raise
 
     def add_book(self, title: str, author: str, year: int) -> Book:
         book = Book(title=title, author=author, year=year)
@@ -83,6 +101,53 @@ class BookCollection:
             return True
         return False
 
+    def _remove_from_exact(self, matches: List[Book], index: Optional[int]) -> dict:
+        """Handle removal when exact title matches exist."""
+        if index is not None:
+            if not isinstance(index, int) or index < 1 or index > len(matches):
+                return {
+                    "success": False, "removed": 0,
+                    "message": "Index out of range for exact matches.",
+                    "matches": [b.title for b in matches]
+                }
+            book = matches[index - 1]
+        elif len(matches) > 1:
+            return {
+                "success": False, "removed": 0,
+                "message": "Multiple books match that title. Provide an index to disambiguate.",
+                "matches": [b.title for b in matches]
+            }
+        else:
+            book = matches[0]
+        try:
+            self.books.remove(book)
+            self.save_books()
+            return {"success": True, "removed": 1, "message": f"Removed book: {book.title}"}
+        except ValueError:
+            return {"success": False, "removed": 0, "message": "Failed to remove book (internal error)."}
+
+    def _remove_from_similar(self, similar: List[Book], index: Optional[int]) -> dict:
+        """Handle removal when only similar (non-exact) title matches exist."""
+        if index is None:
+            return {
+                "success": False, "removed": 0,
+                "message": "No exact match found. Similar titles exist.",
+                "similar": [b.title for b in similar]
+            }
+        if not isinstance(index, int) or index < 1 or index > len(similar):
+            return {
+                "success": False, "removed": 0,
+                "message": "Index out of range for similar titles.",
+                "similar": [b.title for b in similar]
+            }
+        book = similar[index - 1]
+        try:
+            self.books.remove(book)
+            self.save_books()
+            return {"success": True, "removed": 1, "message": f"Removed book: {book.title} (from similar matches)"}
+        except ValueError:
+            return {"success": False, "removed": 0, "message": "Failed to remove book (internal error)."}
+
     def remove_book(self, title: str, index: Optional[int] = None) -> dict:
         """Remove a book by title or by index when multiple matches exist.
 
@@ -96,81 +161,25 @@ class BookCollection:
         - message: str
         - matches / similar: optional lists of titles when ambiguous or no exact match
         """
-        # Basic validation
         if not isinstance(title, str) or not title.strip():
             return {"success": False, "removed": 0, "message": "Invalid title provided."}
 
-        # Find exact matches first
         exact_matches = self.find_books_by_title(title)
-
-        # If exact matches exist
         if exact_matches:
-            # If an index was provided, attempt to remove that specific match
-            if index is not None:
-                if not isinstance(index, int) or index < 1 or index > len(exact_matches):
-                    return {
-                        "success": False,
-                        "removed": 0,
-                        "message": "Index out of range for exact matches.",
-                        "matches": [b.title for b in exact_matches]
-                    }
-                book = exact_matches[index - 1]
-                try:
-                    self.books.remove(book)
-                    self.save_books()
-                    return {"success": True, "removed": 1, "message": f"Removed book: {book.title}"}
-                except ValueError:
-                    return {"success": False, "removed": 0, "message": "Failed to remove book (internal error)."}
+            return self._remove_from_exact(exact_matches, index)
 
-            # No index: ambiguous if multiple
-            if len(exact_matches) > 1:
-                return {
-                    "success": False,
-                    "removed": 0,
-                    "message": "Multiple books match that title. Provide an index to disambiguate.",
-                    "matches": [b.title for b in exact_matches]
-                }
-
-            # Single exact match -> remove
-            book = exact_matches[0]
-            try:
-                self.books.remove(book)
-                self.save_books()
-                return {"success": True, "removed": 1, "message": f"Removed book: {book.title}"}
-            except ValueError:
-                return {"success": False, "removed": 0, "message": "Failed to remove book (internal error)."}
-
-        # No exact matches: look for similar titles
         similar = self.find_similar_titles(title)
         if similar:
-            if index is not None:
-                if not isinstance(index, int) or index < 1 or index > len(similar):
-                    return {
-                        "success": False,
-                        "removed": 0,
-                        "message": "Index out of range for similar titles.",
-                        "similar": [b.title for b in similar]
-                    }
-                book = similar[index - 1]
-                try:
-                    self.books.remove(book)
-                    self.save_books()
-                    return {"success": True, "removed": 1, "message": f"Removed book: {book.title} (from similar matches)"}
-                except ValueError:
-                    return {"success": False, "removed": 0, "message": "Failed to remove book (internal error)."}
-
-            return {
-                "success": False,
-                "removed": 0,
-                "message": "No exact match found. Similar titles exist.",
-                "similar": [b.title for b in similar]
-            }
+            return self._remove_from_similar(similar, index)
 
         return {"success": False, "removed": 0, "message": "No book found with that title."}
 
     def find_by_author(self, author: str) -> List[Book]:
         """Find all books by a given author."""
-        return [b for b in self.books if b.author.lower() == author.lower()]
+        if not isinstance(author, str):
+            return []
+        norm = self._normalize(author)
+        return [b for b in self.books if self._normalize(b.author) == norm]
 
     def get_statistics(self) -> dict:
         """本の統計情報を取得します。"""
@@ -203,7 +212,8 @@ class BookCollection:
         Raises ValueError if either argument is not an int.
         Returns a list of Book instances matching the range.
         """
-        if not isinstance(start_year, int) or not isinstance(end_year, int):
+        if (isinstance(start_year, bool) or isinstance(end_year, bool)
+                or not isinstance(start_year, int) or not isinstance(end_year, int)):
             raise ValueError("start_year and end_year must be integers")
 
         # Allow reversed ranges by swapping

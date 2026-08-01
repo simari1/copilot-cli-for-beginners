@@ -53,6 +53,9 @@ obj/
 
 # Testing
 coverage/
+/coverage/
+.coverage
+.coverage.*
 .nyc_output/
 *.lcov
 .jest/
