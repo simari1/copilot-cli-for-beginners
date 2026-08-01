@@ -376,3 +376,75 @@ def test_get_statistics_with_books():
     assert stats["unread_count"] == 2
     assert stats["oldest_book"].year == 1900
     assert stats["newest_book"].year == 2020
+
+
+# --- list_unread ---
+
+def test_list_unread_empty_collection():
+    """list_unread returns an empty list when the collection has no books."""
+    collection = BookCollection()
+
+    result = collection.list_unread()
+
+    assert result == []
+
+
+def test_list_unread_all_unread():
+    """list_unread returns every book when none have been marked as read."""
+    collection = BookCollection()
+    collection.add_book("Book A", "Author A", 2000)
+    collection.add_book("Book B", "Author B", 2010)
+    collection.add_book("Book C", "Author C", 2020)
+
+    result = collection.list_unread()
+
+    assert len(result) == 3
+    titles = [b.title for b in result]
+    assert "Book A" in titles
+    assert "Book B" in titles
+    assert "Book C" in titles
+
+
+def test_list_unread_some_read():
+    """list_unread returns only the books that have not been marked as read."""
+    collection = BookCollection()
+    collection.add_book("Unread One", "Author A", 1990)
+    collection.add_book("Read One", "Author B", 2000)
+    collection.add_book("Unread Two", "Author C", 2010)
+    collection.mark_as_read("Read One")
+
+    result = collection.list_unread()
+
+    assert len(result) == 2
+    titles = [b.title for b in result]
+    assert "Unread One" in titles
+    assert "Unread Two" in titles
+    assert "Read One" not in titles
+
+
+def test_list_unread_all_read():
+    """list_unread returns an empty list when every book has been marked as read."""
+    collection = BookCollection()
+    collection.add_book("Book Alpha", "Author A", 1985)
+    collection.add_book("Book Beta", "Author B", 1995)
+    collection.mark_as_read("Book Alpha")
+    collection.mark_as_read("Book Beta")
+
+    result = collection.list_unread()
+
+    assert result == []
+
+
+def test_list_unread_does_not_modify_collection():
+    """Calling list_unread does not alter the total number of books in the collection."""
+    collection = BookCollection()
+    collection.add_book("Book X", "Author X", 2005)
+    collection.add_book("Book Y", "Author Y", 2015)
+    collection.mark_as_read("Book X")
+    count_before = len(collection.books)
+
+    collection.list_unread()
+
+    assert len(collection.books) == count_before
+    assert collection.find_book_by_title("Book X") is not None
+    assert collection.find_book_by_title("Book Y") is not None
