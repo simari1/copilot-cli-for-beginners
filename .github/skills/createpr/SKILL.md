@@ -6,6 +6,10 @@ Orchestrate a complete GitHub Pull Request workflow with code quality checks, do
 
 This skill uses a **Plan-Driven Execution** model. Before running the full workflow, planning mode outlines the proposed commits and steps, then **waits for user approval before executing**.
 
+- Show a summary of planned commits, PR title, and description
+- Allow user to approve or modify the plan before proceeding
+- Provide a clear output format for the plan summary
+
 ### Commit Structure
 
 The PR workflow typically divides into commits based on change scope:
