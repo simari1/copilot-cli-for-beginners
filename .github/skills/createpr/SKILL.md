@@ -1,3 +1,8 @@
+---
+name: createpr
+description: Orchestrate a complete GitHub Pull Request workflow - use when creating PRs, preparing pull requests, or running pre-PR code quality checks
+---
+
 # Create PR Skill
 
 Orchestrate a complete GitHub Pull Request workflow with code quality checks, documentation, and review preparation.
