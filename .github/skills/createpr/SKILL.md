@@ -4,7 +4,7 @@ Orchestrate a complete GitHub Pull Request workflow with code quality checks, do
 
 ## Plan Mode
 
-This skill uses a **Plan-Driven Execution** model. Before running the full workflow, planning mode outlines:
+This skill uses a **Plan-Driven Execution** model. Before running the full workflow, planning mode outlines the proposed commits and steps, then **waits for user approval before executing**.
 
 ### Commit Structure
 
