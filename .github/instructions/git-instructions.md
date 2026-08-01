@@ -27,11 +27,9 @@ main
  └── develop
        ├── feature/xxx   → develop へ PR
        ├── fix/xxx       → develop へ PR
-       └── release/x.x.x → main へ PR → develop へ PR
-           （main へのマージ完了後、必ず develop へも PR を作成しマージすること）
+       └── release/x.x.x → main + develop へ PR
 
-hotfix/xxx → main へ PR し、同時に develop へも PR する
-（develop ブランチを経由せず直接 main に PR できる緊急時専用フロー）
+hotfix/xxx → main + develop へ直接 PR（緊急時のみ）
 ```
 
 ## コミットメッセージ規約（Conventional Commits）

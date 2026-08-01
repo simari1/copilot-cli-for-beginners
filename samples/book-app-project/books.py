@@ -174,6 +174,10 @@ class BookCollection:
 
         return {"success": False, "removed": 0, "message": "No book found with that title."}
 
+    def list_unread(self) -> List[Book]:
+        """Return all books that have not been read yet."""
+        return [b for b in self.books if not b.read]
+
     def find_by_author(self, author: str) -> List[Book]:
         """Find all books by a given author."""
         if not isinstance(author, str):
